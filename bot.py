@@ -14,7 +14,6 @@ for j in range(1, 8):
     description[j-1] += worksheet[15][j].value
     protoabilities[j-1] += worksheet[14][j].value
 c = 0
-#(9, 14), (1, 8)
 for i in range(9, 14):
     for j in range(1, 8):
         questions[c] += (worksheet[i][j].value)
@@ -47,8 +46,6 @@ id, name, surname, password, email, phone_number = 0, '', '', '', '', ''
 def start(message):
     conn = sqlite3.connect('DataBase.sql')
     cur = conn.cursor()
-    #cur.execute('DROP TABLE IF EXISTS users')
-    #cur.execute('DROP TABLE IF EXISTS results')
     cur.execute('CREATE TABLE IF NOT EXISTS users(id INTEGER PRIMARY KEY AUTOINCREMENT, name varchar(20), surname varchar(20), pass varchar(20), email varchar(20), phone_number varchar(15))')
     cur.execute('CREATE TABLE IF NOT EXISTS results(id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER REFERENCES users(id), result varchar(20))')
     conn.commit()
