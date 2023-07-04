@@ -42,6 +42,10 @@ btn5 = types.InlineKeyboardButton('5', callback_data='5')
 #создаём переменные для работы с бд
 id, name, surname, password, email, phone_number = 0, '', '', '', '', ''
 
+@bot.message_handler(commands=['help'])
+def help(message):
+    bot.send_message(message.chat.id,'Чтобы начать проходить тест введи команду /start.<br> Если ты захочешь сменить аккаунт после прохождения теста, то введи команду /start')
+
 @bot.message_handler(commands=['start'])
 def start(message):
     conn = sqlite3.connect('DataBase.sql')
