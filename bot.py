@@ -28,7 +28,6 @@ for i in range(1, 8):
     directions[i-1] = proto
 wookbook.close()
 
-new_user = True
 score = [0] * 7
 position = 0
 
@@ -51,8 +50,6 @@ def help(message):
 def start(message):
     conn = sqlite3.connect('DataBase.sql')
     cur = conn.cursor()
-    #cur.execute('DROP TABLE IF EXISTS users')
-    #cur.execute('DROP TABLE IF EXISTS results')
     cur.execute('CREATE TABLE IF NOT EXISTS users(id INTEGER PRIMARY KEY AUTOINCREMENT, name varchar(20), surname varchar(20), pass varchar(20), email varchar(20), phone_number varchar(15))')
     cur.execute('CREATE TABLE IF NOT EXISTS results(id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER REFERENCES users(id), result varchar(20))')
     conn.commit()
@@ -109,15 +106,9 @@ def user_phone_number(message):
     conn = sqlite3.connect('DataBase.sql')
     cur = conn.cursor()
 
-    #if new_user:
     cur.execute(f"INSERT INTO users(name, surname, pass, email, phone_number) VALUES('%s', '%s', '%s', '%s', '%s')" % (name, surname, password, email, phone_number))
     bot.send_message(message.chat.id, 'Пользователь зарегистрирован')
     conn.commit()
-    #else: 
-    #cur.execute(f"UPDATE users SET name = '%s', surname = '%s', pass = '%s', email = '%s', phone_number = '%s'" % (name, surname, password, email, phone_number))
-    #bot.send_message(message.chat.id, 'Данные изменены')
-    #conn.commit()
-    #new_user = True
 
     cur.close()
     conn.close()
@@ -155,9 +146,7 @@ def callback_message(callback):
     elif callback.data == 'auth':
         password_check(callback.message)
     elif callback.data == 'No':
-        #global new_user
         start(callback.message)
-        #new_user = False
     else:
         if callback.data == '1':
             counting(1)
