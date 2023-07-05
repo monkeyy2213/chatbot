@@ -28,6 +28,7 @@ for i in range(1, 8):
     directions[i-1] = proto
 wookbook.close()
 
+new_user = True
 score = [0] * 7
 position = 0
 
@@ -44,12 +45,14 @@ id, name, surname, password, email, phone_number = 0, '', '', '', '', ''
 
 @bot.message_handler(commands=['help'])
 def help(message):
-    bot.send_message(message.chat.id,'Чтобы начать проходить тест введи команду /start.<br> Если ты захочешь сменить аккаунт после прохождения теста, то введи команду /start')
+    bot.send_message(message.chat.id,'Чтобы начать проходить тест введи команду /start. Если ты захочешь сменить аккаунт после прохождения теста, то введи команду /start')
 
 @bot.message_handler(commands=['start'])
 def start(message):
     conn = sqlite3.connect('DataBase.sql')
     cur = conn.cursor()
+    #cur.execute('DROP TABLE IF EXISTS users')
+    #cur.execute('DROP TABLE IF EXISTS results')
     cur.execute('CREATE TABLE IF NOT EXISTS users(id INTEGER PRIMARY KEY AUTOINCREMENT, name varchar(20), surname varchar(20), pass varchar(20), email varchar(20), phone_number varchar(15))')
     cur.execute('CREATE TABLE IF NOT EXISTS results(id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER REFERENCES users(id), result varchar(20))')
     conn.commit()
@@ -60,10 +63,23 @@ def start(message):
 
 
 def user_name(message):
-    global name
+    global name, id
     name = message.text.strip()
-    bot.send_message(message.chat.id,'Введи фамилию')
-    bot.register_next_step_handler(message, user_surname)
+    conn = sqlite3.connect('DataBase.sql')
+    cur = conn.cursor()
+    cur.execute(f"SELECT id FROM users WHERE name = '%s'"% (name))
+    id = cur.fetchall()
+    cur.close()
+    conn.close()
+    if id != []:
+        markup_u = types.InlineKeyboardMarkup()
+        btny = types.InlineKeyboardButton('Авторизоваться', callback_data='auth')
+        btnn = types.InlineKeyboardButton('Ввести другое имя', callback_data='No')
+        markup_u.row(btny, btnn)
+        bot.send_message(message.chat.id,'Пользователь с таким именем уже зарегистрирован', reply_markup=markup_u)
+    else:
+        bot.send_message(message.chat.id,'Введи фамилию')
+        bot.register_next_step_handler(message, user_surname)
 
 def user_surname(message):
     global surname
@@ -87,24 +103,47 @@ def user_phone_number(message):
     markup1 = types.InlineKeyboardMarkup()
     markup1.add(types.InlineKeyboardButton('Начать', callback_data='start'))    
 
-    global phone_number
+    global phone_number, new_user
     phone_number = message.text.strip()
 
     conn = sqlite3.connect('DataBase.sql')
     cur = conn.cursor()
 
-    cur.execute(f"SELECT id FROM users WHERE name = '%s' and surname = '%s' and pass = '%s' and email = '%s' and phone_number = '%s'"% (name, surname, password, email, phone_number))
-    id = cur.fetchall()
-    if id != []:
-        bot.send_message(message.chat.id, 'Вы уже зарегистрированы')
-    else: 
-        cur.execute(f"INSERT INTO users(name, surname, pass, email, phone_number) VALUES('%s', '%s', '%s', '%s', '%s')" % (name, surname, password, email, phone_number))
-        bot.send_message(message.chat.id, 'Пользователь зарегистрирован')
-        conn.commit()
+    #if new_user:
+    cur.execute(f"INSERT INTO users(name, surname, pass, email, phone_number) VALUES('%s', '%s', '%s', '%s', '%s')" % (name, surname, password, email, phone_number))
+    bot.send_message(message.chat.id, 'Пользователь зарегистрирован')
+    conn.commit()
+    #else: 
+    #cur.execute(f"UPDATE users SET name = '%s', surname = '%s', pass = '%s', email = '%s', phone_number = '%s'" % (name, surname, password, email, phone_number))
+    #bot.send_message(message.chat.id, 'Данные изменены')
+    #conn.commit()
+    #new_user = True
+
     cur.close()
     conn.close()
     bot.send_message(message.chat.id,f'{welcome}', reply_markup=markup1 )
-    
+
+def password_check(message):
+    global id
+    password_c = message.text.strip()
+    conn = sqlite3.connect('DataBase.sql')
+    cur = conn.cursor()
+    cur.execute(f"SELECT * FROM users WHERE id = '%s'"% (id[0]))
+    data = cur.fetchall()
+    cur.close()
+    conn.close()
+    if data[0][3] == password_c:
+        bot.send_message(message.chat.id,'Вы авторизованы')
+        global name, surname, password, email, phone_number
+        name, surname, password, email, phone_number = data[0][1], data[0][2], data[0][3], data[0][4], data[0][5]
+        question(message)
+    elif len(password_c) > 0 and len(password_c) < 20:
+        bot.send_message(message.chat.id,'Пароль неверный, попробуй ещё раз')
+        bot.register_next_step_handler(message, password_check)
+    else:
+        bot.send_message(message.chat.id,'Введи пароль')
+        bot.register_next_step_handler(message, password_check)
+        
 
 @bot.callback_query_handler(func=lambda callback: True)
 def callback_message(callback):
@@ -113,6 +152,12 @@ def callback_message(callback):
     elif callback.data == 'directions':
         for i in range(len(directions[index])):
             bot.send_message(callback.message.chat.id, {directions[index][i]})
+    elif callback.data == 'auth':
+        password_check(callback.message)
+    elif callback.data == 'No':
+        #global new_user
+        start(callback.message)
+        #new_user = False
     else:
         if callback.data == '1':
             counting(1)
